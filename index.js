@@ -1,99 +1,116 @@
 const containerElement = document.getElementById("container");
 const btnAdd = document.getElementsByClassName("btn-add")[0];
 
-// Retrieve saved notes from localStorage
 function getAppStorage() {
     return JSON.parse(localStorage.getItem('notes-app') || "[]");
 }
 
-// Load existing notes from localStorage and render them
-getAppStorage().forEach(element => {
-    const textElement = createTextElement(element.id, element.content);
-    containerElement.insertBefore(textElement, btnAdd);
-});
+function renderNotes() {
+    const notes = getAppStorage();
 
-// Create a new textarea element for a note, including a delete button
-function createTextElement(id, content) {
+    containerElement.innerHTML = '';
+    containerElement.appendChild(btnAdd);
+
+    notes
+        .sort((a, b) => b.id - a.id)
+        .forEach(note => {
+            const textElement = createTextElement(note.id, note.title, note.content, note.timestamp);
+            containerElement.appendChild(textElement);
+        });
+}
+
+function createTextElement(id, title, content, timestamp) {
     const textElement = document.createElement('div');
     textElement.classList.add('sticky-container');
 
+    const titleInput = document.createElement('input');
+    titleInput.classList.add('sticky-title');
+    titleInput.type = 'text';
+    titleInput.value = title || '';
+    titleInput.placeholder = 'Enter title';
+
+    titleInput.addEventListener('input', () => {
+        updateNoteTitle(id, titleInput.value);
+    });
+
     const textarea = document.createElement('textarea');
     textarea.classList.add('sticky');
-    textarea.value = content;  // Set the content
+    textarea.value = content || '';
     textarea.placeholder = 'Enter your notes';
 
-    // Add event listener to save content when the user types
     textarea.addEventListener('input', () => {
         updateNoteContent(id, textarea.value);
     });
 
-    // Create the delete button for the note
+    const footer = document.createElement('div');
+    footer.classList.add('note-footer');
+    footer.textContent = timestamp || new Date().toLocaleString();
+
     const deleteButton = document.createElement('button');
     deleteButton.classList.add('btn-delete');
     deleteButton.textContent = 'Delete';
 
-    // Add event listener to handle deleting the note
     deleteButton.addEventListener('click', () => {
-        deleteNote(id, textElement);
+        deleteNote(id);
     });
 
-    // Append the textarea and delete button to the note container
+    textElement.appendChild(titleInput);
     textElement.appendChild(textarea);
+    textElement.appendChild(footer);
     textElement.appendChild(deleteButton);
 
     return textElement;
 }
 
-// Add a new sticky note to the container and update localStorage
 function addSticky() {
     const notes = getAppStorage();
 
-    // Create a new note with a unique ID using Date.now() and empty content
+    const timestamp = new Date().toLocaleString();
     const notesObject = {
-        id: Date.now(),  // Use timestamp for a unique ID
-        content: ""      // Start with empty content
+        id: Date.now(),
+        title: "",
+        content: "",
+        timestamp: timestamp
     };
 
-    const textElement = createTextElement(notesObject.id, notesObject.content);
-    containerElement.insertBefore(textElement, btnAdd);
-
-    // Focus on the newly added note so the user can start typing
-    const textarea = textElement.querySelector('textarea');
-    textarea.focus();
-
-    // Add the new note to the array and update localStorage
     notes.push(notesObject);
     saveNotes(notes);
+
+    renderNotes();
 }
 
-// Save all notes to localStorage
 function saveNotes(notes) {
     localStorage.setItem("notes-app", JSON.stringify(notes));
 }
 
-// Update content of a note in localStorage when it is edited
-function updateNoteContent(id, newContent) {
+function updateNoteTitle(id, newTitle) {
     const notes = getAppStorage();
     const noteIndex = notes.findIndex(note => note.id === id);
-    
+
     if (noteIndex !== -1) {
-        notes[noteIndex].content = newContent;
-        saveNotes(notes); // Save the updated notes to localStorage
+        notes[noteIndex].title = newTitle;
+        saveNotes(notes);
     }
 }
 
-// Delete a note from the container and localStorage
-function deleteNote(id, noteElement) {
-    // Remove the note from the UI
-    noteElement.remove();
-
-    // Remove the note from the saved notes array
+function updateNoteContent(id, newContent) {
     const notes = getAppStorage();
-    const updatedNotes = notes.filter(note => note.id !== id);
+    const noteIndex = notes.findIndex(note => note.id === id);
 
-    // Save the updated notes array to localStorage
-    saveNotes(updatedNotes);
+    if (noteIndex !== -1) {
+        notes[noteIndex].content = newContent;
+        saveNotes(notes);
+    }
 }
 
-// Event listener to add a new sticky note when the button is clicked
+function deleteNote(id) {
+    const notes = getAppStorage();
+    const updatedNotes = notes.filter(note => note.id !== id);
+    saveNotes(updatedNotes);
+
+    renderNotes();
+}
+
 btnAdd.addEventListener('click', () => addSticky());
+
+renderNotes();
